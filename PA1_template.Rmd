@@ -7,16 +7,24 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
+unzip_activity <- unzip("./activity.zip")
+act <- read.csv(unzip_activity)
+head(act)
+tail(act)
 
 ## What is mean total number of steps taken per day?
-
-
+library(dplyr)
+day_act <- group_by(act, date)
+step_perday_act <- summarize(day_act, sums = sum(steps), means=mean(steps), medians=median(steps))
+hist(step_perday_act$sums)
+step_perday_act$means 
+step_perday_act$medians
 
 ## What is the average daily activity pattern?
-
-
+inte_act <- group_by(act, interval)
+step_inte_act <- summarize(inte_act, means = mean(steps, na.rm=TRUE))
+plot(step_inte_act$means, type="l")
+step_inte_act[which(step_inte_act$means==max(step_inte_act$means)),]
 
 ## Imputing missing values
 
