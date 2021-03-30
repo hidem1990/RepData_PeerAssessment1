@@ -7,27 +7,112 @@ output:
 
 
 ## Loading and preprocessing the data
+```{r, echo=TRUE}
 unzip_activity <- unzip("./activity.zip")
 act <- read.csv(unzip_activity)
 head(act)
 tail(act)
+```
 
 ## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
 library(dplyr)
 day_act <- group_by(act, date)
 step_perday_act <- summarize(day_act, sums = sum(steps), means=mean(steps), medians=median(steps))
 hist(step_perday_act$sums)
 step_perday_act$means 
 step_perday_act$medians
+```
 
 ## What is the average daily activity pattern?
+```{r, echo=TRUE}
 inte_act <- group_by(act, interval)
 step_inte_act <- summarize(inte_act, means = mean(steps, na.rm=TRUE))
 plot(step_inte_act$means, type="l")
 step_inte_act[which(step_inte_act$means==max(step_inte_act$means)),]
+```
 
 ## Imputing missing values
+```{r, echo=TRUE}
+sum(is.na(act$steps))
+```
+### Devise a strategy for filling mean of that day in all of the missing values in the dataset
+```{r, echo=TRUE}
+new_act <- act
+act_row <- nrow(act)
+for (i in 1:act_row){
+  if(is.na(new_act[i, ]$steps)){
+    na_date <- new_act[i, ]$date
+    new_act[i, ]$steps <- step_perday_act[step_perday_act$date ==na_date, ]$means
+  }
+}
+```
 
+### mean and median of the new_act dateframe
+```{r, echo=TRUE}
+library(dplyr)
+day_newact <- group_by(new_act, date)
+step_perday_newact <- summarize(day_newact, sums = sum(steps), means=mean(steps), medians=median(steps))
+hist(step_perday_newact$sums)
+step_perday_newact$means 
+step_perday_newact$medians
+```
 
+### why new_act is not different from act
+```{r, echo=TRUE}
+table(act[is.na(act$steps), ]$date)
+```
+
+#### on the day when there is any NA data, there is no other data then NA. So, the new_act datafrem didn't change
+### So, I changed the way of filling NA data. I devised a strategy for filling mean of the 5-minutes interval in all of the missing values in the dataset
+```{r, echo=TRUE}
+new_act <- act
+act_row <- nrow(act)
+for (i in 1:act_row){
+  if(is.na(new_act[i, ]$steps)){
+    na_inte <- new_act[i, ]$interval
+    new_act[i, ]$steps <- step_inte_act[step_inte_act$interval ==na_inte, ]$means
+  }
+}
+```
+
+### mean and median of the new_act dateframe
+```{r, echo=TRUE}
+library(dplyr)
+day_newact <- group_by(new_act, date)
+step_perday_newact <- summarize(day_newact, sums = sum(steps), means=mean(steps), medians=median(steps))
+hist(step_perday_newact$sums)
+step_perday_newact$means 
+step_perday_newact$medians
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r, echo=TRUE}
+library(lubridate)
+library(ggplot2)
+library(dplyr)
+weekday_vec <- c("Mon","Tue","Wed","Thu","Fri")
+weekend_vec <- c("Sat", "Sun")
+weekday <- data.frame()
+weekend <- data.frame()
+
+for (i in 1:nrow(new_act)){
+  if (wday(new_act[i,]$date,label=TRUE,locale = "en_US.UTF-8") %in% weekday_vec){
+    weekday <- bind_rows(weekday, new_act[i,])
+  }
+  else{
+    weekend <- bind_rows(weekend, new_act[i,])
+  }
+}
+
+inte_weekend <- group_by(weekend, interval)
+step_inte_weekend <- summarize(inte_weekend, means = mean(steps))
+step_inte_weekend$wday <- "weekend"
+inte_weekday <- group_by(weekday, interval)
+step_inte_weekday <- summarize(inte_weekday, means = mean(steps))
+step_inte_weekday$wday <- "weekday"
+
+final_act <- bind_rows(step_inte_weekend, step_inte_weekday)
+p_0 <- ggplot(final_act, aes(x = interval, y = means)) +geom_line()+facet_grid(rows = vars(wday))+ theme_bw() 
+p_0 +labs(x = "Iinterval", y = "Number of steps")
+```
